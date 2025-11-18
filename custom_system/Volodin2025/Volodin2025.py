@@ -48,19 +48,19 @@ class Volodin2025(PDEBase):
         # self.alpha = (1j - 1) * (sqrt(2.0 * self.omega)) / 2.0
         self.alpha = -(1j - 1) * (sqrt(2.0 * self.omega)) / 2.0
 
-        self.real_alpha = 1.0 - (sqrt(2) / (2 * sqrt(self.omega))) * (
-            (
-                sin(sqrt(2) * sqrt(self.omega) / 2)
-                * cos(sqrt(2) * sqrt(self.omega) / 2)
-                + sinh(sqrt(2) * sqrt(self.omega) / 2)
-                * cosh(sqrt(2) * sqrt(self.omega) / 2)
-            )
-            / (
-                cos(sqrt(2) * sqrt(self.omega) / 2) ** 2
-                + cosh(sqrt(2) * sqrt(self.omega) / 2) ** 2
-                - 1
-            )
-        )
+        # self.real_alpha = 1.0 - (sqrt(2) / (2 * sqrt(self.omega))) * (
+        #     (
+        #         sin(sqrt(2) * sqrt(self.omega) / 2)
+        #         * cos(sqrt(2) * sqrt(self.omega) / 2)
+        #         + sinh(sqrt(2) * sqrt(self.omega) / 2)
+        #         * cosh(sqrt(2) * sqrt(self.omega) / 2)
+        #     )
+        #     / (
+        #         cos(sqrt(2) * sqrt(self.omega) / 2) ** 2
+        #         + cosh(sqrt(2) * sqrt(self.omega) / 2) ** 2
+        #         - 1
+        #     )
+        # )
 
     def evolution_rate(self, state, t=0):
         h, T = state
@@ -74,9 +74,9 @@ class Volodin2025(PDEBase):
         d2x_h = h.laplace(bc=self.bc)
 
         # --- Π ---
-        # f_alpha = 1.0 - (tan(self.alpha * h)) / (self.alpha * h)
-        # real_f_alpha = real(f_alpha)
-        real_f_alpha = self.real_alpha
+        f_alpha = 1.0 - (tan(self.alpha * h)) / (self.alpha * h)
+        real_f_alpha = real(f_alpha)
+        # real_f_alpha = self.real_alpha
 
         H = -(h * real_f_alpha * dx_h).gradient(bc=self.bc)[0]
 
@@ -157,6 +157,16 @@ def prepare_simulation_params():
     grid = CartesianGrid([[0, L]], [Nx], periodic=True)
     x = grid.axes_coords[0]
 
+    # Initial conditions
+    h0 = 1.0 + 0.1 * sin(2 * pi / L * x)
+    initial_h = ScalarField(grid, h0)
+
+    T0 = 1.0 + 0.1 * sin(2 * pi / L * x)
+    initial_T = ScalarField(grid, T0)
+
+    # Boundary conditions
+    bc = {'x': 'periodic'}
+
     # ======================================================================
     # Physical parameters
     # ======================================================================
@@ -178,47 +188,10 @@ def prepare_simulation_params():
         6.0 * 3.14 * density * viscosity**2 * film_thickness
     )
 
-    # omega *= 10000
-    # phi *= 10000
-
-    # typical values for:
-    # film_thickness = 1e-7  # m
-    # density = 1000  # kg/m^3
-    # viscosity = 10**-6  # m^2/s
-    # gravitational_acceleration = 9.81  # m/s^2
-    # frequency = 1000  # Hz
-    # amplitude = film_thickness * 10   # m
-    # surface_tension = 0.07  # N/m
-    # Hamaker_constant = 6.0 * 3.14 * 1e-21  # J
-
-    # a=7.0, G0=1e-08, b=1e-06, omega=1e-05, phi=1e-05
-
-    # stable:
-    # Ca = 1e-4
-    # G0 = 1.1e-4
-    # b = 0.05
-    # omega = 10
-    # phi = 1e-4
-
     # ======================================================================
-
-    # # stable for dt = 1e-6
-    # G0 = 1e-8
-    # Ca = 7.0
-    # omega = 0.2
-    # phi = 1e-5
+    # Alternative way to set amplitude based on desired vibration velocity
     # V = 1.0
     # b = sqrt((2 * V * Ca) / (omega**2))
-
-    # Boundary conditions
-    bc = {'x': 'periodic'}
-
-    # Initial conditions
-    h0 = 1.0 + 0.1 * sin(2 * pi / L * x)
-    initial_h = ScalarField(grid, h0)
-
-    T0 = 1.0 + 0.1 * sin(2 * pi / L * x)
-    initial_T = ScalarField(grid, T0)
 
     return {
         't_range': t_range,
@@ -248,7 +221,7 @@ def run_simulation(
     Ma=0,
     Pr=0,
     Bi=0,
-    bc={'x': 'periodic'},
+    bc={},
     initial_h=None,
     initial_T=None,
 ):
@@ -384,7 +357,7 @@ def main():
         initial_T=initial_T,
     )
     print('Simulation stopped')
-    
+
     save_res_to_txt(storage, output_dir='res')
     plot_results(storage)
 
