@@ -3,12 +3,10 @@
 
 from os import makedirs
 
-import numpy as np
-from numpy import sqrt, sin, sinh, cos, cosh, tan, real
+from matplotlib import pyplot as plt
+from numpy import sqrt, sin, sinh, cos, cosh, pi, tan, real, savetxt
 
 # from numba import njit
-
-import matplotlib.pyplot as plt
 
 from pde import (
     PDEBase,
@@ -122,7 +120,7 @@ def prepare_simulation_params():
     Nx = 100
     L = 5
     t_range = 100
-    dt = 0.000001
+    dt = 0.0001
 
     grid = CartesianGrid([[0, L]], [Nx], periodic=True)
     x = grid.axes_coords[0]
@@ -140,13 +138,16 @@ def prepare_simulation_params():
     surface_tension = 0.07  # N/m
     Hamaker_constant = 6.0 * 3.14 * 1e-21  # J
 
-    # Ca = surface_tension * (film_thickness / (density * viscosity**2))
-    # G0 = gravitational_acceleration * (film_thickness**3 / viscosity**2)
-    # omega = frequency * (film_thickness**2 / viscosity)
-    # b = amplitude * 10.0
-    # phi = Hamaker_constant / (
-    #     6.0 * 3.14 * density * viscosity**2 * film_thickness
-    # )
+    Ca = surface_tension * (film_thickness / (density * viscosity**2))
+    G0 = gravitational_acceleration * (film_thickness**3 / viscosity**2)
+    omega = frequency * (film_thickness**2 / viscosity)
+    b = amplitude * 10.0
+    phi = Hamaker_constant / (
+        6.0 * 3.14 * density * viscosity**2 * film_thickness
+    )
+
+    # omega *= 10000
+    # phi *= 10000
 
     # typical values for:
     # film_thickness = 1e-7  # m
@@ -169,19 +170,19 @@ def prepare_simulation_params():
 
     # ======================================================================
 
-    G0 = 1e-8
-    Ca = 7.0
-    omega = 0.2
-    phi = 1e-5
-
-    V = 1.0
-    b = sqrt((2 * V * Ca) / (omega**2))
+    # # stable for dt = 1e-6
+    # G0 = 1e-8
+    # Ca = 7.0
+    # omega = 0.2
+    # phi = 1e-5
+    # V = 1.0
+    # b = sqrt((2 * V * Ca) / (omega**2))
 
     # Boundary conditions
     bc = {'x': 'periodic'}
 
     # Initial conditions
-    h0 = 1.0 + 1e-4 * np.sin(2 * np.pi / L * x)
+    h0 = 1.0 + 0.1 * sin(2 * pi / L * x)
     h_initial = ScalarField(grid, h0)
 
     return {
@@ -232,6 +233,10 @@ def run_simulation(
         t_range=t_range,
         dt=dt,
         tracker=trackers,
+        solver='scipy',
+        method='Radau',
+        rtol=1e-6,         # relative tolerance
+        atol=1e-9,         # absolute tolerance
     )
 
     return result, storage
@@ -241,7 +246,26 @@ def save_res_to_txt(storage, output_dir='Shklyaev2008'):
     makedirs(output_dir, exist_ok=True)
 
     for i, step in enumerate(storage.data):
-        np.savetxt(f'{output_dir}/h_{i}.txt', step.data)
+        savetxt(f'{output_dir}/h_{i}.txt', step.data)
+
+
+def plot_results(storage):
+    x = storage[0].grid.cell_coords[:, 0]
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(
+        x, storage[0].data, label=f'Initial step t={storage.times[0]:.2f}'
+    )
+    plt.plot(
+        x, storage[-1].data, label=f'Final step t={storage.times[-1]:.2f}'
+    )
+
+    plt.xlabel('x')
+    plt.ylabel('h(x)')
+    plt.title('Initial and Final Step')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
 def main():
@@ -270,10 +294,10 @@ def main():
         initial_conditions=h_initial,
     )
 
-    save_res_to_txt(storage)
+    save_res_to_txt(storage, output_dir='Shklyaev2008')
+    print('Simulation stopped')
 
-    result.plot()
-    plt.show()
+    plot_results(storage)
 
 
 if __name__ == '__main__':
