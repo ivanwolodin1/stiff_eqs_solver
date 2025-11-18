@@ -1,5 +1,5 @@
-# https://doi.org/10.1103/PhysRevE.77.036320
-# Solution to 30(a)-31(b) eq.
+# https://doi.org/10.1007/s12217-025-10201-8
+# Solution to 57-57 eqs.
 
 from os import makedirs
 
@@ -14,12 +14,13 @@ from pde import (
     ScalarField,
     MemoryStorage,
     PlotTracker,
+    FieldCollection,
 )
 
 
-class Shklyaev2008(PDEBase):
-    """https://doi.org/10.1103/PhysRevE.77.036320
-    Solution to 30(a)-31(b) eq.
+class Volodin2025(PDEBase):
+    """https://doi.org/10.1007/s12217-025-10201-8
+    Solution to 57-57 eqs.
     """
 
     def __init__(
@@ -29,6 +30,9 @@ class Shklyaev2008(PDEBase):
         b=0,
         omega=10,
         phi=0,
+        Ma=0,
+        Bi=0,
+        Pr=0,
         bc={'x': 'periodic'},
     ):
         super().__init__()
@@ -38,6 +42,9 @@ class Shklyaev2008(PDEBase):
         self.b = b
         self.omega = omega
         self.phi = phi
+        self.Ma = Ma
+        self.Bi = Bi
+        self.Pr = Pr
         # self.alpha = (1j - 1) * (sqrt(2.0 * self.omega)) / 2.0
         self.alpha = -(1j - 1) * (sqrt(2.0 * self.omega)) / 2.0
 
@@ -55,7 +62,9 @@ class Shklyaev2008(PDEBase):
             )
         )
 
-    def evolution_rate(self, h, t=0):
+    def evolution_rate(self, state, t=0):
+        h, T = state
+        f = T - h
         # https://py-pde.readthedocs.io/en/latest/examples_gallery/advanced_pdes/pde_1d_class.html
         # on gradient() operator
 
@@ -104,10 +113,33 @@ class Shklyaev2008(PDEBase):
 
         h_t = (
             (1.0 / 3.0) * h**3 * dx_Pi
+            + 0.5 * self.Ma * h**2 * f.gradient(bc=self.bc)[0]
             - 0.5 * self.b**2 * self.omega**2 * Q
         ).gradient(bc=self.bc)[0]
 
-        return h_t
+        dx_T = T.gradient(bc=self.bc)[0]
+        dx_f = f.gradient(bc=self.bc)[0]
+
+        # (1/Pr) * d/dx ( h * dT/dx )
+        term1 = (h * dx_T / self.Pr).gradient(bc=self.bc)[0]
+
+        # - (1/(2Pr)) * (dh/dx)^2
+        term2 = -(dx_h**2) / (2 * self.Pr)
+
+        # - beta/Pr * f
+        term3 = -(self.Bi / self.Pr) * f
+
+        # ( h^3/3 * dPi/dx + Ma/2 * h^2 * df/dx ) * df/dx
+        term4 = ((h**3 / 3) * dx_Pi + 0.5 * self.Ma * h**2 * dx_f) * dx_f
+
+        # term5: d/dx( h^4/8 * dPi/dx + Ma/6 * h^3 * df/dx )
+        inside = (h**4 / 8) * dx_Pi + (self.Ma / 6) * h**3 * dx_f
+        term5 = inside.gradient(bc=self.bc)[0]
+
+        # h * T_t = term1 + term2 + term3 + term4 + term5
+        T_t = (term1 + term2 + term3 + term4 + term5) / h
+
+        return FieldCollection([h_t, T_t])
 
 
 def prepare_simulation_params():
@@ -183,7 +215,10 @@ def prepare_simulation_params():
 
     # Initial conditions
     h0 = 1.0 + 0.1 * sin(2 * pi / L * x)
-    h_initial = ScalarField(grid, h0)
+    initial_h = ScalarField(grid, h0)
+
+    T0 = 1.0 + 0.1 * sin(2 * pi / L * x)
+    initial_T = ScalarField(grid, T0)
 
     return {
         't_range': t_range,
@@ -194,7 +229,11 @@ def prepare_simulation_params():
         'omega': omega,
         'phi': phi,
         'bc': bc,
-        'h_initial': h_initial,
+        'initial_h': initial_h,
+        'Ma': 1e-5,
+        'Pr': 7.0,
+        'Bi': 1e-6,
+        'initial_T': initial_T,
     }
 
 
@@ -206,8 +245,12 @@ def run_simulation(
     b=0,
     omega=0,
     phi=0,
+    Ma=0,
+    Pr=0,
+    Bi=0,
     bc={'x': 'periodic'},
-    initial_conditions=None,
+    initial_h=None,
+    initial_T=None,
 ):
 
     # Storage and trackers
@@ -217,54 +260,89 @@ def run_simulation(
         # 'steady_state',
         storage.tracker(interrupts=1),
         PlotTracker(show=True),
+        # PlotTracker(
+        #     show=True,
+        #     title='Evolution of h(x) over time',
+        #     transformation=lambda state, t: state[0],  # только h
+        # ),
+        # PlotTracker(
+        #     show=True,
+        #     title='Evolution of T(x) over time',
+        #     transformation=lambda state, t: state[1],  # только T
+        # ),
     ]
 
-    eq = Shklyaev2008(
+    eq = Volodin2025(
         Ca=Ca,
         G0=G0,
         b=b,
         omega=omega,
         phi=phi,
+        Ma=Ma,
+        Pr=Pr,
+        Bi=Bi,
         bc=bc,
     )
 
+    state = FieldCollection([initial_h, initial_T])
+
     result = eq.solve(
-        initial_conditions,
+        state,
         t_range=t_range,
         dt=dt,
         tracker=trackers,
         solver='scipy',
         method='Radau',
-        rtol=1e-6,         # relative tolerance
-        atol=1e-9,         # absolute tolerance
+        rtol=1e-6,  # relative tolerance
+        atol=1e-9,  # absolute tolerance
     )
 
     return result, storage
 
 
-def save_res_to_txt(storage, output_dir='Shklyaev2008'):
+def save_res_to_txt(storage, output_dir='res'):
     makedirs(output_dir, exist_ok=True)
 
     for i, step in enumerate(storage.data):
-        savetxt(f'{output_dir}/h_{i}.txt', step.data)
+        h_field = step[0].data
+        T_field = step[1].data
+        savetxt(f'{output_dir}/h_{i}.txt', h_field)
+        savetxt(f'{output_dir}/T_{i}.txt', T_field)
+
+    print(f'Сохранено {len(storage.data)} шагов в {output_dir}/')
 
 
 def plot_results(storage):
     x = storage[0].grid.cell_coords[:, 0]
 
-    plt.figure(figsize=(8, 5))
-    plt.plot(
-        x, storage[0].data, label=f'Initial step t={storage.times[0]:.2f}'
-    )
-    plt.plot(
-        x, storage[-1].data, label=f'Final step t={storage.times[-1]:.2f}'
-    )
+    fig, axes = plt.subplots(2, 1, figsize=(8, 10), sharex=True)
 
-    plt.xlabel('x')
-    plt.ylabel('h(x)')
-    plt.title('Initial and Final Step')
-    plt.legend()
-    plt.grid(True)
+    # --- h ---
+    axes[0].plot(
+        x, storage[0][0].data, label=f'Initial step t={storage.times[0]:.2f}'
+    )
+    axes[0].plot(
+        x, storage[-1][0].data, label=f'Final step t={storage.times[-1]:.2f}'
+    )
+    axes[0].set_ylabel('h(x)')
+    axes[0].set_title('Evolution of h(x)')
+    axes[0].legend()
+    axes[0].grid(True)
+
+    # --- T ---
+    axes[1].plot(
+        x, storage[0][1].data, label=f'Initial step t={storage.times[0]:.2f}'
+    )
+    axes[1].plot(
+        x, storage[-1][1].data, label=f'Final step t={storage.times[-1]:.2f}'
+    )
+    axes[1].set_xlabel('x')
+    axes[1].set_ylabel('T(x)')
+    axes[1].set_title('Evolution of T(x)')
+    axes[1].legend()
+    axes[1].grid(True)
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -278,9 +356,17 @@ def main():
     omega = params['omega']
     phi = params['phi']
     bc = params['bc']
-    h_initial = params['h_initial']
 
-    print(f'Ca={Ca}, G0={G0}, b={b}, omega={omega}, phi={phi}')
+    Ma = params['Ma']
+    Pr = params['Pr']
+    Bi = params['Bi']
+
+    initial_h = params['initial_h']
+    initial_T = params['initial_T']
+
+    print(
+        f'Ca={Ca}, G0={G0}, b={b}, omega={omega}, phi={phi}, Ma={Ma}, Pr={Pr}, Bi={Bi}'
+    )
 
     result, storage = run_simulation(
         t_range=t_range,
@@ -290,13 +376,16 @@ def main():
         b=b,
         omega=omega,
         phi=phi,
+        Ma=Ma,
+        Pr=Pr,
+        Bi=Bi,
         bc=bc,
-        initial_conditions=h_initial,
+        initial_h=initial_h,
+        initial_T=initial_T,
     )
-
-    save_res_to_txt(storage, output_dir='Shklyaev2008')
     print('Simulation stopped')
-
+    
+    save_res_to_txt(storage, output_dir='res')
     plot_results(storage)
 
 
