@@ -3,6 +3,8 @@ from numpy import savetxt
 
 
 def save_res_to_txt(storage, output_dir=None, is_solved=None):
+    # TODO: fix if storage is 1D instead of 2D
+    
     makedirs(output_dir, exist_ok=True)
 
     # создаем поддиректории

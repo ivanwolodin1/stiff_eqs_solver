@@ -21,8 +21,48 @@ def params_to_folder_name(params: dict) -> str:
     return '_'.join(parts)
 
 
-def main():
-    params = get_simulation_params()
+def run_with_different_initial_conditions():
+    params = get_simulation_params(pde_model='volodin_2025')
+    # -------------------------------------------------------------
+    # Корневая папка: имя формируется ИЗ ПАРАМЕТРОВ
+    # -------------------------------------------------------------
+    params_folder = params_to_folder_name(params)
+    root_output_dir = f'results/{params_folder}'
+    makedirs(root_output_dir, exist_ok=True)
+    print(f'Root folder: {root_output_dir}')
+
+    initial_amplitude_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    wave_k_values = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+
+    for initial_amplitude in initial_amplitude_values:
+        for wave_k in wave_k_values:
+
+            initial_h, initial_T = prepare_initial_conditions(
+                perturbation_amplitude=initial_amplitude,
+                wave_k=wave_k,
+            )
+
+            result, storage, is_solved = run_simulation(
+                pde_model='volodin_2025',
+                initial_h=initial_h,
+                initial_T=initial_T,
+                **params,
+            )
+            print('Simulation stopped')
+
+            # подпапка с параметрами начальных условий
+            output_dir = (
+                f'{root_output_dir}/'
+                f'k={wave_k:.2f}_a={initial_amplitude}_is_solved={is_solved}'
+            )
+            makedirs(output_dir, exist_ok=True)
+
+            save_res_to_txt(storage, output_dir, is_solved)
+            plot_results_to_file(storage, output_dir, is_solved)
+
+
+def run_with_different_perturbation_freqs_and_amplitudes():
+    params = get_simulation_params(pde_model='volodin_2025')
     amplitudes = [
         0.5,
         0.6,
@@ -72,7 +112,10 @@ def main():
             print(f'parameters: {params}')
 
             result, storage, is_solved = run_simulation(
-                initial_h=initial_h, initial_T=initial_T, **params
+                pde_model='volodin_2025',
+                initial_h=initial_h,
+                initial_T=initial_T,
+                **params,
             )
             print('Simulation stopped')
 
@@ -85,41 +128,33 @@ def main():
             save_res_to_txt(storage, root_output_dir, is_solved)
             plot_results_to_file(storage, root_output_dir, is_solved)
 
-    # print(f'parameters: {params}')
 
-    # # -------------------------------------------------------------
-    # # Корневая папка: имя формируется ИЗ ПАРАМЕТРОВ
-    # # -------------------------------------------------------------
-    # params_folder = params_to_folder_name(params)
-    # root_output_dir = f'results/{params_folder}'
-    # makedirs(root_output_dir, exist_ok=True)
-    # print(f'Root folder: {root_output_dir}')
+def run_single():
+    params = get_simulation_params(pde_model='shklyaev_2008_viii_b')
+    initial_h, initial_T = prepare_initial_conditions(
+        perturbation_amplitude=0.1,
+        wave_k=params['k'],
+    )
+    print(f'parameters: {params}')
 
-    # initial_amplitude_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    # wave_k_values = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+    result, storage, is_solved = run_simulation(
+        pde_model='shklyaev_2008_viii_b',
+        initial_h=initial_h,
+        **params,
+    )
+    print('Simulation stopped')
 
-    # for initial_amplitude in initial_amplitude_values:
-    #     for wave_k in wave_k_values:
+    root_output_dir = 'results'
+    makedirs(root_output_dir, exist_ok=True)
 
-    #         initial_h, initial_T = prepare_initial_conditions(
-    #             perturbation_amplitude=initial_amplitude,
-    #             wave_k=wave_k,
-    #         )
+    save_res_to_txt(storage, root_output_dir, is_solved)
+    plot_results_to_file(storage, root_output_dir, is_solved)
 
-    #         result, storage, is_solved = run_simulation(
-    #             initial_h=initial_h, initial_T=initial_T, **params
-    #         )
-    #         print('Simulation stopped')
 
-    #         # подпапка с параметрами начальных условий
-    #         output_dir = (
-    #             f'{root_output_dir}/'
-    #             f'k={wave_k:.2f}_a={initial_amplitude}_is_solved={is_solved}'
-    #         )
-    #         makedirs(output_dir, exist_ok=True)
-
-    #         save_res_to_txt(storage, output_dir, is_solved)
-    #         plot_results_to_file(storage, output_dir, is_solved)
+def main():
+    # run_with_different_initial_conditions()
+    # run_with_different_perturbation_freqs_and_amplitudes
+    run_single()
 
 
 if __name__ == '__main__':

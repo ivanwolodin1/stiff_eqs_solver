@@ -55,9 +55,12 @@ def plot_results_to_file(storage, output_dir=None, is_solved=True):
     # имя файла = имя папки output_dir + ".png"
     # например output_dir="a=0.1_k=0.50_is_solved=False" →
     # plots/a=0.1_k=0.50_is_solved=False.png
-    output_name = output_dir.strip('/').split('/')[
-        -1
-    ]  # только последний сегмент
+    try:
+        output_name = output_dir.strip('/').split('/')[
+            -1
+        ]  # только последний сегмент
+    except Exception:
+        output_name = 'plot'
     plots_path = f'{plots_dir}/{output_name}.png'
     plt.savefig(plots_path, dpi=200)
 
