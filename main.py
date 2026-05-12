@@ -1,6 +1,6 @@
 from os import makedirs
 
-from numpy import arange
+# from numpy import arange
 
 from params import get_simulation_params
 from initial_conditions.init_fields import prepare_initial_conditions
@@ -31,8 +31,12 @@ def run_with_different_initial_conditions():
     makedirs(root_output_dir, exist_ok=True)
     print(f'Root folder: {root_output_dir}')
 
-    initial_amplitude_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    wave_k_values = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+    initial_amplitude_values = [0.001, 0.025, 0.005, 0.075, 0.1, 0.125, 0.150, 0.175, 0.2, 0.225,
+        # , 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09
+    ]
+    wave_k_values = [2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1
+        # 0.5, 0.6, 0.7, 0.8, 0.9
+    ]
 
     for initial_amplitude in initial_amplitude_values:
         for wave_k in wave_k_values:
@@ -61,9 +65,14 @@ def run_with_different_initial_conditions():
             plot_results_to_file(storage, output_dir, is_solved)
 
 
-def run_with_different_perturbation_freqs_and_amplitudes():
+def run_with_different_external_freqs_and_amplitudes():
     params = get_simulation_params(pde_model='volodin_2025')
     amplitudes = [
+        0.0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
         0.5,
         0.6,
         0.7,
@@ -80,6 +89,26 @@ def run_with_different_perturbation_freqs_and_amplitudes():
         1.8,
         1.9,
         2.0,
+        2.1,
+        2.2,
+        2.3,
+        2.4,
+        2.5,
+        2.6,
+        2.7,
+        2.8,
+        2.9,
+        3.0,
+        3.1,
+        3.2,
+        3.3,
+        3.4,
+        3.5,
+        3.6,
+        3.7,
+        3.8,
+        3.9,
+        4.0,
     ]
     omega_frs = [
         0.5,
@@ -98,11 +127,31 @@ def run_with_different_perturbation_freqs_and_amplitudes():
         1.8,
         1.9,
         2.0,
+        2.1,
+        2.2,
+        2.3,
+        2.4,
+        2.5,
+        2.6,
+        2.7,
+        2.8,
+        2.9,
+        3.0,
+        3.1,
+        3.2,
+        3.3,
+        3.4,
+        3.5,
+        3.6,
+        3.7,
+        3.8,
+        3.9,
+        4.0,
     ]
 
     initial_h, initial_T = prepare_initial_conditions(
-        perturbation_amplitude=0.3,
-        wave_k=0.9,
+        perturbation_amplitude=0.01,
+        wave_k=2.0,
     )
 
     for om in omega_frs:
@@ -120,9 +169,8 @@ def run_with_different_perturbation_freqs_and_amplitudes():
             print('Simulation stopped')
 
             # подпапка с параметрами начальных условий
-            root_output_dir = (
-                f'results/ampl={ampl}_omfr={om}_is_solved={is_solved}'
-            )
+            Maran = params['Ma']
+            root_output_dir = f'results/Ma={Maran}_ampl={ampl}_omfr={om}_is_solved={is_solved}'
             makedirs(root_output_dir, exist_ok=True)
 
             save_res_to_txt(storage, root_output_dir, is_solved)
@@ -130,16 +178,23 @@ def run_with_different_perturbation_freqs_and_amplitudes():
 
 
 def run_single():
-    params = get_simulation_params(pde_model='shklyaev_2008_viii_b')
+    # params = get_simulation_params(pde_model='shklyaev_2008_viii_b')
+    params = get_simulation_params(pde_model='volodin_2025')
     initial_h, initial_T = prepare_initial_conditions(
-        perturbation_amplitude=0.1,
-        wave_k=params['k'],
+        perturbation_amplitude=0.01,
+        wave_k=2.0,
     )
     print(f'parameters: {params}')
 
+    # result, storage, is_solved = run_simulation(
+    #     pde_model='shklyaev_2008_viii_b',
+    #     initial_h=initial_h,
+    #     **params,
+    # )
     result, storage, is_solved = run_simulation(
-        pde_model='shklyaev_2008_viii_b',
+        pde_model='volodin_2025',
         initial_h=initial_h,
+        initial_T=initial_T,
         **params,
     )
     print('Simulation stopped')
@@ -151,10 +206,58 @@ def run_single():
     plot_results_to_file(storage, root_output_dir, is_solved)
 
 
+def optimized_run_with_different_external_freqs_and_amplitudes():
+    params = get_simulation_params(pde_model='volodin_2025')
+    amplitudes = [round(x * 0.1, 1) for x in range(41)]  # 0.0 .. 4.0
+    omega_frs  = [round(x * 0.1, 1) for x in range(5, 41)]  # 0.5 .. 4.0
+
+    initial_h, initial_T = prepare_initial_conditions(
+        perturbation_amplitude=0.01,
+        wave_k=2.0,
+    )
+
+    for om in omega_frs:
+        print(f'\n=== omega = {om} ===')
+        boundary_found = False
+
+        for ampl in amplitudes:
+            params['b'] = ampl
+            params['omega'] = om
+            print(f'parameters: {params}')
+
+            result, storage, is_solved = run_simulation(
+                pde_model='volodin_2025',
+                initial_h=initial_h,
+                initial_T=initial_T,
+                **params,
+            )
+            print('Simulation stopped')
+
+            Maran = params['Ma']
+            root_output_dir = (
+                f'results/Ma={Maran}_ampl={ampl}_omfr={om}_is_solved={is_solved}'
+            )
+            makedirs(root_output_dir, exist_ok=True)
+            save_res_to_txt(storage, root_output_dir, is_solved)
+            plot_results_to_file(storage, root_output_dir, is_solved)
+
+            if is_solved:
+                print(
+                    f'>>> Граница устойчивости найдена: om={om}, ampl={ampl}. '
+                    f'Пропускаем большие амплитуды.'
+                )
+                boundary_found = True
+                break  # дальше по амплитуде всё будет True — незачем считать
+
+        if not boundary_found:
+            print(f'>>> Для om={om} граница не найдена (всё неустойчиво).')
+
+
 def main():
-    # run_with_different_initial_conditions()
-    # run_with_different_perturbation_freqs_and_amplitudes
-    run_single()
+    # optimized_run_with_different_external_freqs_and_amplitudes()
+    run_with_different_initial_conditions()
+    # run_with_different_external_freqs_and_amplitudes()
+    # run_single()
 
 
 if __name__ == '__main__':

@@ -33,7 +33,7 @@ def run_simulation(
     storage = MemoryStorage()
     trackers = [
         'progress',
-        PlotTracker(show=True),
+        # PlotTracker(show=True),
         storage.tracker(interrupts=1),
     ]
 

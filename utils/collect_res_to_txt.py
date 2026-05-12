@@ -1,6 +1,6 @@
 import os
 
-directory = 'results/amplitude_frequency_map/apl_fre'   # ← сюда путь
+directory = '../results/Ma_00835'   # ← сюда путь
 
 data = []
 
@@ -27,7 +27,7 @@ for name in os.listdir(directory):
 print(data[:10])
 print('Всего элементов:', len(data))
 
-output_file = 'results/amplitude_frequency_map/apl_fre/summary_table.txt'
+output_file = '../results/Ma_00835/summary_table.txt'
 
 data_sorted = sorted(data, key=lambda x: (x[1], x[0]))
 

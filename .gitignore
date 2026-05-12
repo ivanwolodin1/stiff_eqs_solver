@@ -217,3 +217,7 @@ custom_system/Volodin2025/Ca=0.00072, G0=9.8e-06, b=0.56, omega=1.5, phi=1e-06, 
 custom_system/Volodin2025/Ca=0.00072, G0=9.8e-06, b=0.8, omega=1.5, phi=1e-06, Ma=0.167, Pr=6.99, Bi=1
 results/
 plots/
+plots_prev/
+utility_res_to_plot/
+plots_different_Ma
+plots_different_Ma.zip

@@ -2,7 +2,12 @@ import matplotlib.pyplot as plt
 
 # --- читаем файл ---
 data = []
-path_to_file = 'results/amplitude_frequency_map/apl_fre/summary_table.txt'
+path_to_file = (
+    '../results/Ma_0167/amplitude_freq_extended/res/summary_table.txt'
+)
+# path_to_file = '../results/Ma_00835/summary_table.txt'
+# path_to_file = '../results/Ma_0334/summary_table.txt'
+
 with open(path_to_file) as f:
     next(f)  # пропускаем заголовок
     for line in f:
